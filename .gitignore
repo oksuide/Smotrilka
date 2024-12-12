@@ -1,0 +1,19 @@
+# Test binary, built with `go test -c`
+*.test
+
+# env file
+.env
+
+# Go
+backend/*.env
+backend/*.log
+backend/tmp/
+
+# Node.js
+frontend/node_modules/
+frontend/.env
+frontend/build/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
