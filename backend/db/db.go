@@ -40,18 +40,18 @@ func Connect(connStr string) {
 func InitTables() {
 	// Создание таблицы пользователей
 	query := `
+	CREATE TABLE IF NOT EXISTS users (
+		id SERIAL PRIMARY KEY,
+		   username VARCHAR(50) NOT NULL,
+		password VARCHAR(50) NOT NULL,
+		room_id UUID
+	);
     CREATE TABLE IF NOT EXISTS rooms (
     	id UUID PRIMARY KEY,
     	name VARCHAR(50) NOT NULL,
 		password VARCHAR(50) NOT NULL,
     	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		creator INT 
-	);
-    CREATE TABLE IF NOT EXISTS users (
-    	id SERIAL PRIMARY KEY,
-   		username VARCHAR(50) NOT NULL,
-		password VARCHAR(50) NOT NULL,
-    	room_id UUID
+		creator INT REFERENCES users(id)
 	);
 	CREATE TABLE IF NOT EXISTS room_events (
 	    id SERIAL PRIMARY KEY,
@@ -63,28 +63,5 @@ func InitTables() {
 	err := DB.Exec(query).Error
 	if err != nil {
 		log.Fatal("Error initializing tables:", err)
-	}
-
-	addForeignKey("users", "fk_room", "room_id", "rooms(id)")
-	addForeignKey("rooms", "fk_creator", "creator", "users(id)")
-}
-
-func addForeignKey(tableName, constraintName, columnName, referencedTable string) {
-	query := `
-    DO $$
-    BEGIN
-        IF NOT EXISTS (
-            SELECT 1
-            FROM information_schema.table_constraints
-            WHERE constraint_name = '` + constraintName + `'
-        ) THEN
-            ALTER TABLE ` + tableName + ` ADD CONSTRAINT ` + constraintName + ` FOREIGN KEY (` + columnName + `) REFERENCES ` + referencedTable + `;
-        END IF;
-    END
-    $$;`
-
-	err := DB.Exec(query).Error
-	if err != nil {
-		log.Fatalf("Ошибка добавления внешнего ключа %s: %v", constraintName, err)
 	}
 }
