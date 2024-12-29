@@ -13,7 +13,7 @@ var (
 	DB *gorm.DB
 )
 
-// Подключаемся к базе данных
+// Подключение к базе данных
 func Connect(connStr string) {
 	var err error
 	DB, err = gorm.Open(postgres.Open(connStr), &gorm.Config{})
@@ -21,7 +21,7 @@ func Connect(connStr string) {
 		log.Fatal("Ошибка подключения к базе данных:", err)
 	}
 
-	// Проверяем соединение с базой данных
+	// Проверка соединение с базой данных
 	sqlDB, err := DB.DB()
 	if err != nil {
 		fmt.Println("Error getting DB instance:", err)
@@ -36,9 +36,8 @@ func Connect(connStr string) {
 
 }
 
-// InitTables инициализирует таблицы
+// Инициализация таблиц
 func InitTables() {
-	// Создание таблицы пользователей
 	query := `
 	CREATE TABLE IF NOT EXISTS users (
 		id SERIAL PRIMARY KEY,
@@ -50,6 +49,7 @@ func InitTables() {
     	id UUID PRIMARY KEY,
     	name VARCHAR(50) NOT NULL,
 		password VARCHAR(50) NOT NULL,
+		user_count INT,
     	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		creator INT REFERENCES users(id)
 	);
