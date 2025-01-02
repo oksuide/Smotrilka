@@ -13,14 +13,16 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Настройка Upgrader для работы с WebSocket
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+// Обработка соединения WebSocket
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("Upgrade error:", err)
+		log.Println("Ошибка обновления до WebSocket:", err)
 		return
 	}
 	defer conn.Close()
@@ -28,18 +30,17 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Read error:", err)
+			log.Println("Ошибка чтения сообщения:", err)
 			break
 		}
-		log.Println("Message received:", string(message))
+		log.Println("Сообщение получено:", string(message))
 	}
 }
 
 func main() {
-	// Подключаемся к .env
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	// Загружаем .env
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Ошибка загрузки .env файла:", err)
 	}
 
 	// Подключение к базе данных
@@ -47,31 +48,60 @@ func main() {
 	db.Connect(connStr)
 	db.InitTables()
 
-	// Создание роутера
+	// Создание роутера и настройка маршрутов
+	router := setupRouter()
+	// Запуск сервера
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	if err := router.Run(":" + port); err != nil {
+		log.Fatalf("Ошибка запуска сервера: %v", err)
+	}
+}
+
+// Настройка маршруты и middleware
+func setupRouter() *gin.Engine {
 	router := gin.Default()
 
-	// Применяем AuthMiddleware ко всем маршрутам, требующим авторизации
-	authorized := router.Group("/api")
+	// Роут для WebSocket
+	router.GET("/ws", gin.WrapH(http.HandlerFunc(handleWebSocket)))
+
+	// Роуты API
+	api := router.Group("/api")
+
+	// Роуты без авторизации
+	api.GET("/rooms/:id/events", handlers.GetRoomEvents)
+
+	// Роуты с авторизацией
+	authorized := api.Group("")
 	authorized.Use(middleware.AuthMiddleware())
 	{
-		// Роуты для работы с пользователями
-		authorized.GET("/user", handlers.GetUser)
-		authorized.PUT("/user", handlers.UpdateUser)
-		authorized.DELETE("/users/:id", handlers.DeleteUser)
-		authorized.POST("/users", handlers.CreateUser)
+		setupUserRoutes(authorized)
+		setupRoomRoutes(authorized)
+	}
 
-		// Роуты для комнат
-		rooms := authorized.Group("/rooms")
-		{
-			rooms.Use(middleware.RoomIDMiddleware()) // Применяем middleware для roomID
-			rooms.GET("/:postID", handlers.GetRoom)
-			rooms.DELETE("/:postID", handlers.DeleteRoom)
-			rooms.POST("/", handlers.CreateRoom)
-		}
+	return router
+}
 
-		// Запуск сервера на порту 8080
-		if err := router.Run(":8080"); err != nil {
-			log.Fatalf("Server start error: %v", err)
-		}
+// setupUserRoutes настраивает маршруты для работы с пользователями
+func setupUserRoutes(group *gin.RouterGroup) {
+	users := group.Group("/users")
+	{
+		users.POST("/", handlers.CreateUser)
+		users.GET("/:id", handlers.GetUser)
+		users.PUT("/:id", handlers.UpdateUser)
+		users.DELETE("/:id", handlers.DeleteUser)
+	}
+}
+
+// setupRoomRoutes настраивает маршруты для работы с комнатами
+func setupRoomRoutes(group *gin.RouterGroup) {
+	rooms := group.Group("/rooms")
+	rooms.Use(middleware.RoomIDMiddleware())
+	{
+		rooms.POST("/", handlers.CreateRoom)
+		rooms.GET("/:id", handlers.GetRoom)
+		rooms.DELETE("/:id", handlers.DeleteRoom)
 	}
 }

@@ -210,6 +210,10 @@ func ConnectToRoom(c *gin.Context) {
 		return
 	}
 
+	if err := LogRoomEvent(room.ID, user.ID, "UserConnected"); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log room event"})
+		return
+	}
 	// Возвращение успешного ответа
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Connected to room successfully",
@@ -280,6 +284,10 @@ func DisconnectFromRoom(c *gin.Context) {
 		return
 	}
 
+	if err := LogRoomEvent(room.ID, user.ID, "UserDisconnected"); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log room event"})
+		return
+	}
 	// Возвращение успешного ответа
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Disconnected from the room successfully",
@@ -290,6 +298,25 @@ func DisconnectFromRoom(c *gin.Context) {
 
 // crd Room Endpoints
 func CreateRoom(c *gin.Context) {
+	// Получаем ID пользователя из параметров URL
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	// Проверяем наличие пользователя с таким ID
+	var user models.User
+	if err := db.DB.Where("id = ?", id).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Пользователь с таким id не найден
+			c.JSON(404, gin.H{"error": "User not found"})
+			return
+		} else {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+	}
 	var room models.Room
 	// Привязываем JSON-данные из тела запроса к переменной room
 	if err := c.ShouldBindJSON(&room); err != nil {
@@ -305,7 +332,7 @@ func CreateRoom(c *gin.Context) {
 	}
 
 	// Хешируем пароль перед сохранением
-	_, err := hashPassword(&room.Password)
+	_, err = hashPassword(&room.Password)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Error hashing password"})
 		return
@@ -317,11 +344,16 @@ func CreateRoom(c *gin.Context) {
 		return
 	}
 
+	if err := LogRoomEvent(room.ID, user.ID, "RoomCreated"); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log room event"})
+		return
+	}
 	// Возвращаем успешный ответ с данными о созданной комнате (без пароля)
 	c.JSON(201, gin.H{
-		"id":   roomInd(),
-		"name": room.Name,
-		"date": room.CreatedAt,
+		"id":      roomInd(),
+		"name":    room.Name,
+		"date":    room.CreatedAt,
+		"creator": user.ID,
 	})
 }
 
@@ -358,6 +390,20 @@ func DeleteRoom(c *gin.Context) {
 		c.JSON(401, gin.H{"error": "User not authenticated"})
 		return
 	}
+
+	// Проверяем наличие пользователя с таким ID
+	var user models.User
+	if err := db.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Пользователь с таким id не найден
+			c.JSON(404, gin.H{"error": "User not found"})
+			return
+		} else {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
 	// Ищем комнату в базе данных по ID
 	var room models.Room
 	if err := db.DB.Where("id = ?", room.ID).First(&room).Error; err != nil {
@@ -380,17 +426,42 @@ func DeleteRoom(c *gin.Context) {
 		c.JSON(401, gin.H{"error": "The user is not the creator of the room"})
 		return
 	}
+	if err := LogRoomEvent(room.ID, user.ID, "RoomCreated"); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log room event"})
+		return
+	}
 
 	c.JSON(200, gin.H{"message": "Room deleted successfully"})
 }
 
-// Шифрование пароля
+func GetRoomEvents(c *gin.Context) {
+	roomID := c.Param("id")
+
+	var events []models.RoomEvent
+	if err := db.DB.Where("room_id = ?", roomID).Order("timestamp desc").Find(&events).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch events"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"events": events})
+}
+
 func hashPassword(password *string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(*password), 14)
 	return string(bytes), err
 }
 
-// Генерация уникального идентификатора для комнаты
 func roomInd() string {
 	return uuid.New().String()
+}
+func LogRoomEvent(roomID string, userID uint, eventType string) error {
+	event := models.RoomEvent{
+		RoomID:    roomID,
+		UserID:    userID,
+		EventType: eventType,
+	}
+	if err := db.DB.Create(&event).Error; err != nil {
+		return err
+	}
+	return nil
 }

@@ -38,30 +38,33 @@ func Connect(connStr string) {
 
 // Инициализация таблиц
 func InitTables() {
-	query := `
-	CREATE TABLE IF NOT EXISTS users (
-		id SERIAL PRIMARY KEY,
-		   username VARCHAR(50) NOT NULL,
-		password VARCHAR(50) NOT NULL,
-		room_id UUID
-	);
-    CREATE TABLE IF NOT EXISTS rooms (
-    	id UUID PRIMARY KEY,
-    	name VARCHAR(50) NOT NULL,
-		password VARCHAR(50) NOT NULL,
-		user_count INT,
-    	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		creator INT REFERENCES users(id)
-	);
-	CREATE TABLE IF NOT EXISTS room_events (
-	    id SERIAL PRIMARY KEY,
-	    room_id UUID REFERENCES rooms(id),
-	    user_id INT REFERENCES users(id),
-	    event_type TEXT,
-	    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);`
-	err := DB.Exec(query).Error
-	if err != nil {
-		log.Fatal("Error initializing tables:", err)
+	queries := []string{
+		`CREATE TABLE IF NOT EXISTS users (
+			id SERIAL PRIMARY KEY,
+			username VARCHAR(50) NOT NULL,
+			password VARCHAR(255) NOT NULL,
+			room_id UUID DEFAULT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS rooms (
+			id UUID PRIMARY KEY,
+			name VARCHAR(50) NOT NULL,
+			password VARCHAR(255) NOT NULL,
+			user_count INT DEFAULT 0,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			creator INT REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS room_events (
+			id SERIAL PRIMARY KEY,
+			room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
+			user_id INT REFERENCES users(id) ON DELETE CASCADE,
+			event_type VARCHAR(50) NOT NULL,
+			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+	}
+
+	for _, query := range queries {
+		if err := DB.Exec(query).Error; err != nil {
+			log.Fatalf("Ошибка создания таблицы: %v\nЗапрос: %s", err, query)
+		}
 	}
 }

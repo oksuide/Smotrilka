@@ -1,27 +1,30 @@
 package models
 
-import "database/sql"
+import (
+	"database/sql"
+	"time"
+)
 
 type Room struct {
-	ID        string `json:"id" gorm:"primaryKey"`
-	Name      string `json:"name"`
-	Password  string `json:"-"`
-	UserCount int    `json:"user_count"`
-	CreatedAt int    `json:"date"`
-	Creator   int    `json:"creator"`
+	ID        string    `json:"id" gorm:"primaryKey"`
+	Name      string    `json:"name" gorm:"not null"`
+	Password  string    `json:"-" gorm:"not null"`
+	UserCount int       `json:"user_count" gorm:"default:0"`
+	CreatedAt time.Time `json:"date" gorm:"not null"`
+	Creator   uint      `json:"creator" gorm:"not null"`
 }
 
 type User struct {
-	ID       int            `json:"id" gorm:"primaryKey"`
-	UserName string         `json:"username"`
-	Password string         `json:"-"`
-	RoomID   sql.NullString `json:"room_id"`
+	ID       uint           `json:"id" gorm:"primaryKey"`
+	UserName string         `json:"username" gorm:"not null"`
+	Password string         `json:"-" gorm:"not null"`
+	RoomID   sql.NullString `json:"room_id" gorm:"default:null"`
 }
 
-type RoomEvents struct {
-	ID        int    `json:"id" gorm:"primaryKey"`
-	RoomID    string `json:"room_id"`
-	UserID    int    `json:"user_id"`
-	EventType string `json:"event_type"`
-	TimeStamp int    `json:"timestamp"`
+type RoomEvent struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	RoomID    string    `json:"room_id" gorm:"not null"`
+	UserID    uint      `json:"user_id" gorm:"not null"`
+	EventType string    `json:"event_type" gorm:"not null" gorm:"size:50"`
+	TimeStamp time.Time `json:"timestamp" gorm:"default:current_timestamp"`
 }
