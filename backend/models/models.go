@@ -16,7 +16,7 @@ type Room struct {
 
 type User struct {
 	ID       uint           `json:"id" gorm:"primaryKey"`
-	UserName string         `json:"username" gorm:"not null"`
+	UserName string         `json:"username" gorm:"column:username;not null"`
 	Password string         `json:"-" gorm:"not null"`
 	RoomID   sql.NullString `json:"room_id" gorm:"default:null"`
 }
@@ -27,4 +27,8 @@ type RoomEvent struct {
 	UserID    uint      `json:"user_id" gorm:"not null"`
 	EventType string    `json:"event_type" gorm:"not null" gorm:"size:50"`
 	TimeStamp time.Time `json:"timestamp" gorm:"default:current_timestamp"`
+}
+type LoginPayload struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
 }

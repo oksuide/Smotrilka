@@ -22,7 +22,7 @@ var upgrader = websocket.Upgrader{
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("Ошибка обновления до WebSocket:", err)
+		log.Println("Error upgrading to WebSocket:", err)
 		return
 	}
 	defer conn.Close()
@@ -30,17 +30,17 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Ошибка чтения сообщения:", err)
+			log.Println("Error reading message:", err)
 			break
 		}
-		log.Println("Сообщение получено:", string(message))
+		log.Println("Message received:", string(message))
 	}
 }
 
 func main() {
 	// Загружаем .env
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("Ошибка загрузки .env файла:", err)
+		log.Fatal("Error loading .env file:", err)
 	}
 
 	// Подключение к базе данных
@@ -56,7 +56,7 @@ func main() {
 		port = "8080"
 	}
 	if err := router.Run(":" + port); err != nil {
-		log.Fatalf("Ошибка запуска сервера: %v", err)
+		log.Fatalf("Server start error: %v", err)
 	}
 }
 
@@ -72,7 +72,8 @@ func setupRouter() *gin.Engine {
 
 	// Роуты без авторизации
 	api.GET("/rooms/:id/events", handlers.GetRoomEvents)
-
+	api.POST("/users", handlers.CreateUser)
+	api.POST("/login", handlers.Login)
 	// Роуты с авторизацией
 	authorized := api.Group("")
 	authorized.Use(middleware.AuthMiddleware())
@@ -88,11 +89,11 @@ func setupRouter() *gin.Engine {
 func setupUserRoutes(group *gin.RouterGroup) {
 	users := group.Group("/users")
 	{
-		users.POST("/", handlers.CreateUser)
 		users.GET("/:id", handlers.GetUser)
 		users.PUT("/:id", handlers.UpdateUser)
 		users.DELETE("/:id", handlers.DeleteUser)
 	}
+
 }
 
 // setupRoomRoutes настраивает маршруты для работы с комнатами

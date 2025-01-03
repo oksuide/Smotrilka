@@ -18,7 +18,7 @@ func Connect(connStr string) {
 	var err error
 	DB, err = gorm.Open(postgres.Open(connStr), &gorm.Config{})
 	if err != nil {
-		log.Fatal("Ошибка подключения к базе данных:", err)
+		log.Fatal("Database connection error:", err)
 	}
 
 	// Проверка соединение с базой данных
@@ -36,13 +36,12 @@ func Connect(connStr string) {
 
 }
 
-// Инициализация таблиц
 func InitTables() {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS users (
 			id SERIAL PRIMARY KEY,
 			username VARCHAR(50) NOT NULL,
-			password VARCHAR(255) NOT NULL,
+			password TEXT NOT NULL,
 			room_id UUID DEFAULT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS rooms (
@@ -64,7 +63,7 @@ func InitTables() {
 
 	for _, query := range queries {
 		if err := DB.Exec(query).Error; err != nil {
-			log.Fatalf("Ошибка создания таблицы: %v\nЗапрос: %s", err, query)
+			log.Fatalf("Error creating table: %v\nRequest: %s", err, query)
 		}
 	}
 }
