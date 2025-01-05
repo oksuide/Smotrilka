@@ -42,7 +42,6 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file:", err)
 	}
-
 	// Подключение к базе данных
 	connStr := os.Getenv("ConnStr")
 	db.Connect(connStr)
@@ -72,8 +71,8 @@ func setupRouter() *gin.Engine {
 
 	// Роуты без авторизации
 	api.GET("/rooms/:id/events", handlers.GetRoomEvents)
-	api.POST("/users", handlers.CreateUser)
-	api.POST("/login", handlers.Login)
+	api.POST("/register", handlers.CreateUser)
+	api.GET("/login", handlers.Login)
 	// Роуты с авторизацией
 	authorized := api.Group("")
 	authorized.Use(middleware.AuthMiddleware())

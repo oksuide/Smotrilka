@@ -25,14 +25,13 @@ func CreateUser(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "User with this name already exists"})
 		return
 	}
-
 	// Хеширования пароля
 	hashedPassword, err := hashPassword(user.Password)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Error hashing password"})
 		return
 	}
-	log.Printf("Hashed password: %s", hashedPassword)
+
 	user.Password = hashedPassword
 	// Сохраняем пользователя в базе данных
 	if err := db.DB.Create(&user).Error; err != nil {
@@ -62,9 +61,6 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Stored hash: %s", user.Password)
-	log.Printf("Plain password: %s", payload.Password)
-
 	// Сравниваем пароли
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(payload.Password)); err != nil {
 		log.Println("Password comparison failed:", err)
@@ -84,6 +80,6 @@ func Login(c *gin.Context) {
 }
 
 func hashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(bytes), err
 }
