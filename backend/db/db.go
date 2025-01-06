@@ -54,10 +54,10 @@ func InitTables() {
 		)`,
 		`CREATE TABLE IF NOT EXISTS room_events (
 			id SERIAL PRIMARY KEY,
-			room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
-			user_id INT REFERENCES users(id) ON DELETE CASCADE,
+			room_id UUID NOT NULL,
+			user_id INT NOT NULL,
 			event_type VARCHAR(50) NOT NULL,
-			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			time_stamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
 	}
 

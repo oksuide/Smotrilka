@@ -26,9 +26,13 @@ type RoomEvent struct {
 	RoomID    string    `json:"room_id" gorm:"not null"`
 	UserID    uint      `json:"user_id" gorm:"not null"`
 	EventType string    `json:"event_type" gorm:"not null" gorm:"size:50"`
-	TimeStamp time.Time `json:"timestamp" gorm:"default:current_timestamp"`
+	TimeStamp time.Time `json:"time_stamp" gorm:"default:current_timestamp"`
 }
 type LoginPayload struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+type Connect struct {
+	ID string `json:"id" binding:"required"`
 }

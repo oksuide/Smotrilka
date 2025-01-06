@@ -9,10 +9,14 @@ import (
 )
 
 func GetRoomEvents(c *gin.Context) {
-	roomID := c.Param("id")
-
+	// Получение ID комнаты
+	var roomID models.Connect
+	if err := c.ShouldBindJSON(&roomID); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
 	var events []models.RoomEvent
-	if err := db.DB.Where("room_id = ?", roomID).Order("timestamp desc").Find(&events).Error; err != nil {
+	if err := db.DB.Where("room_id = ?", roomID.ID).Find(&events).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch events"})
 		return
 	}

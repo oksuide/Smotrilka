@@ -4,7 +4,6 @@ import (
 	"errors"
 	"project-backend/db"
 	"project-backend/models"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -13,15 +12,15 @@ import (
 
 // crud User Endpoints
 func GetUser(c *gin.Context) {
-	// Получаем ID пользователя из параметров URL
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "Invalid user ID"})
+	// Получение ID пользователя
+	var UserID models.Connect
+	if err := c.ShouldBindJSON(&UserID); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 	// Проверяем наличие пользователя с таким ID
 	var existingUser models.User
-	if err := db.DB.Where("id = ?", id).First(&existingUser).Error; err != nil {
+	if err := db.DB.Where("id = ?", UserID.ID).First(&existingUser).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Пользователь с таким id не найден
 			c.JSON(404, gin.H{"error": "User not found"})
@@ -31,6 +30,8 @@ func GetUser(c *gin.Context) {
 			return
 		}
 	}
+
+	// Возвращаем данные о пользователе
 	c.JSON(200, gin.H{
 		"id":       existingUser.ID,
 		"username": existingUser.UserName,

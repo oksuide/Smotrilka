@@ -70,7 +70,7 @@ func setupRouter() *gin.Engine {
 	api := router.Group("/api")
 
 	// Роуты без авторизации
-	api.GET("/rooms/:id/events", handlers.GetRoomEvents)
+	api.GET("/rooms/events", handlers.GetRoomEvents)
 	api.POST("/register", handlers.CreateUser)
 	api.GET("/login", handlers.Login)
 	// Роуты с авторизацией
@@ -98,10 +98,12 @@ func setupUserRoutes(group *gin.RouterGroup) {
 // setupRoomRoutes настраивает маршруты для работы с комнатами
 func setupRoomRoutes(group *gin.RouterGroup) {
 	rooms := group.Group("/rooms")
-	rooms.Use(middleware.RoomIDMiddleware())
+	// rooms.Use(middleware.RoomIDMiddleware())
 	{
 		rooms.POST("/", handlers.CreateRoom)
 		rooms.GET("/:id", handlers.GetRoom)
 		rooms.DELETE("/:id", handlers.DeleteRoom)
+		rooms.POST("/connect/:id", handlers.ConnectToRoom)
+		rooms.POST("/disconnect/:id", handlers.DisconnectFromRoom)
 	}
 }
