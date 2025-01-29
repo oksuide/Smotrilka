@@ -1,13 +1,19 @@
-import React from 'react';
-import './App.css';
-import ScreenShare from './components/ScreenShare';
-
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import Hub from './pages/Hub';
+import Login from './pages/Login';
+import Profile from './pages/Profile';
+import Room from './pages/Room';
+//new comment
 function App() {
   return (
-    <div className="App">
-      <h1>Screen Sharing App</h1>
-      <ScreenShare />
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/hub" element={<Hub />} />
+        <Route path="/room/:id" element={<Room />} />
+        <Route path="/profile" element={<Profile />} />
+      </Routes>
+    </Router>
   );
 }
 

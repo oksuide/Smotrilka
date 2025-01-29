@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"project-backend/db"
+	"project-backend/db/queries"
 	"project-backend/models"
 
 	"github.com/gin-gonic/gin"
@@ -20,10 +21,9 @@ func ConnectToRoom(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Room ID is required"})
 		return
 	}
-
 	// Проверяем наличие комнаты с таким ID
-	var existingRoom models.Room
-	if err := db.DB.Where("id = ?", roomID).First(&existingRoom).Error; err != nil {
+	existingRoom, err := queries.RoomSearch(roomID)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Комната с таким id не найден
 			c.JSON(404, gin.H{"error": "Room not found"})
@@ -40,10 +40,17 @@ func ConnectToRoom(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := db.DB.First(&user, "id = ?", userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
+	// Проверка существования пользователя
+	user, err := queries.UserSearch(userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Пользователь с таким id не найден
+			c.JSON(404, gin.H{"error": "User not found"})
+			return
+		} else {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
 	// Проверка нахождения пользователя в другой комнате
@@ -87,8 +94,8 @@ func DisconnectFromRoom(c *gin.Context) {
 	}
 
 	// Проверяем наличие комнаты с таким ID
-	var room models.Room
-	if err := db.DB.Where("id = ?", roomID).First(&room).Error; err != nil {
+	room, err := queries.RoomSearch(roomID)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Комната с таким id не найден
 			c.JSON(404, gin.H{"error": "Room not found"})
@@ -98,24 +105,25 @@ func DisconnectFromRoom(c *gin.Context) {
 			return
 		}
 	}
+
 	// Получение пользователя из токена
-	userIDRaw, exists := c.Get("userID")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
-	// Приведение userID к подходящему типу
-	userID, ok := userIDRaw.(int) // Если у тебя UUID, используй string
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID type"})
-		return
-	}
-
-	var user models.User
-	if err := db.DB.First(&user, "id = ?", userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
+	// Проверка существования пользователя
+	user, err := queries.UserSearch(userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Пользователь с таким id не найден
+			c.JSON(404, gin.H{"error": "User not found"})
+			return
+		} else {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
 	// Проверка, находится ли пользователь в комнате
@@ -163,7 +171,6 @@ func DisconnectFromRoom(c *gin.Context) {
 	})
 }
 
-// crd Room Endpoints
 func CreateRoom(c *gin.Context) {
 	// Получаем ID пользователя из контекста
 	userID, exists := c.Get("userID")
@@ -172,9 +179,9 @@ func CreateRoom(c *gin.Context) {
 		return
 	}
 
-	// Проверяем наличие пользователя с таким ID
-	var user models.User
-	if err := db.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+	// Проверка существования пользователя
+	user, err := queries.UserSearch(userID)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Пользователь с таким id не найден
 			c.JSON(404, gin.H{"error": "User not found"})
@@ -191,7 +198,7 @@ func CreateRoom(c *gin.Context) {
 		return
 	}
 
-	// Проверяем уникальность room.name, чтобы не создать дублирующегося пользователя
+	// Проверяем уникальность room.name, чтобы не создать дублирующюся комнату
 	var existingRoom models.Room
 	if err := db.DB.Where("name = ?", room.Name).First(&existingRoom).Error; err == nil {
 		c.JSON(400, gin.H{"error": "Room with this name already exists"})
@@ -212,12 +219,14 @@ func CreateRoom(c *gin.Context) {
 		log.Printf("error:%v", err)
 		return
 	}
+	go func() {
+		if err := LogRoomEvent(room.ID, user.ID, "RoomCreated"); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log room event"})
+			log.Printf("error:%v", err)
+			return
+		}
+	}()
 
-	if err := LogRoomEvent(room.ID, user.ID, "RoomCreated"); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log room event"})
-		log.Printf("error:%v", err)
-		return
-	}
 	// Возвращаем успешный ответ с данными о созданной комнате (без пароля)
 	c.JSON(201, gin.H{
 		"id":      room.ID,
@@ -229,14 +238,15 @@ func CreateRoom(c *gin.Context) {
 
 func GetRoom(c *gin.Context) {
 	// Получение ID комнаты
-	var roomID models.Connect
-	if err := c.ShouldBindJSON(&roomID); err != nil {
+	var room models.Connect
+	if err := c.ShouldBindJSON(&room); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
+
 	// Проверяем наличие комнаты с таким ID
-	var existingRoom models.Room
-	if err := db.DB.Where("id = ?", roomID.ID).First(&existingRoom).Error; err != nil {
+	existingRoom, err := queries.RoomSearch(room.ID)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Комната с таким id не найден
 			c.JSON(404, gin.H{"error": "Room not found"})
@@ -262,9 +272,9 @@ func DeleteRoom(c *gin.Context) {
 		return
 	}
 
-	// Проверяем наличие пользователя с таким ID
-	var user models.User
-	if err := db.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+	// Проверка существования пользователя
+	user, err := queries.UserSearch(userID)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Пользователь с таким id не найден
 			c.JSON(404, gin.H{"error": "User not found"})
@@ -275,16 +285,15 @@ func DeleteRoom(c *gin.Context) {
 		}
 	}
 
-	// Получаем ID комнаты из контекста
 	// Получение ID комнаты
-	var roomID models.Connect
-	if err := c.ShouldBindJSON(&roomID); err != nil {
+	var room models.Connect
+	if err := c.ShouldBindJSON(&room.ID); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 	// Проверяем наличие комнаты с таким ID
-	var existingRoom models.Room
-	if err := db.DB.Where("id = ?", roomID.ID).First(&existingRoom).Error; err != nil {
+	existingRoom, err := queries.RoomSearch(room.ID)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Комната с таким id не найден
 			c.JSON(404, gin.H{"error": "Room not found"})
