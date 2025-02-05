@@ -31,8 +31,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		log.Println("Authorization header:", authHeader)
-		log.Println("Token string after trimming 'Bearer ':", tokenString)
+		// log.Println("Authorization header:", authHeader)
+		// log.Println("Token string after trimming 'Bearer ':", tokenString)
 
 		// Парсим и проверяем токен
 		claims := &auth.Claims{}

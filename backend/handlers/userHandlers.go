@@ -124,3 +124,29 @@ func DeleteUser(c *gin.Context) {
 
 	c.JSON(200, gin.H{"message": "User deleted successfully"})
 }
+
+func GetMe(c *gin.Context) {
+	// Получаем ID пользователя из контекста
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(401, gin.H{"error": "User not authenticated"})
+		return
+	}
+	// Проверяем наличие пользователя с таким ID
+	var existingUser models.User
+	if err := db.DB.Where("id = ?", userID).First(&existingUser).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Пользователь с таким id не найден
+			c.JSON(404, gin.H{"error": "User not found"})
+			return
+		} else {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+	}
+	// Возвращаем данные о пользователе
+	c.JSON(200, gin.H{
+		"id":       existingUser.ID,
+		"username": existingUser.UserName,
+	})
+}

@@ -1,17 +1,18 @@
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
+import Auth from './pages/Auth';
 import Hub from './pages/Hub';
-import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Room from './pages/Room';
-//new comment
+
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/hub" element={<Hub />} />
+        <Route path="/" element={<Auth />} />
+        <Route path="/hub" element={<ProtectedRoute><Hub /></ProtectedRoute>} />
         <Route path="/room/:id" element={<Room />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/:id" element={<Profile />} />
       </Routes>
     </Router>
   );

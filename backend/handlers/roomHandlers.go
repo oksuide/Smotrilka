@@ -264,6 +264,22 @@ func GetRoom(c *gin.Context) {
 	})
 }
 
+func GetUserRooms(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	var rooms []models.Room
+	if err := db.DB.Where("creator = ?", userID).Find(&rooms).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get rooms"})
+		return
+	}
+
+	c.JSON(http.StatusOK, rooms)
+}
+
 func DeleteRoom(c *gin.Context) {
 	// Получаем ID пользователя из контекста
 	userID, exists := c.Get("userID")
