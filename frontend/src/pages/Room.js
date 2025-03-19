@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { FaMicrophone, FaMicrophoneSlash, FaTv, FaVolumeMute, FaVolumeUp } from "react-icons/fa";
-import Chat from '/home/oleg/goprojects/Smotrilka/frontend/src/components/Chat';
+import Chat from '/home/oksuide/GoProjects/Smotrilka/frontend/src/components/Chat.js';
 
 function Room() {
     const [isSharing, setIsSharing] = useState(false);
